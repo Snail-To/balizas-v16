@@ -7,7 +7,7 @@
     "dev": "npx http-server -c-1 -p 5173 .",
     "lint": "eslint .",
     "format": "prettier -w \"**/*.{js,css,html,json}\"",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --test"
   },
   "repository": {
     "type": "git",
@@ -24,7 +24,8 @@
   "dependencies": {
     "@capacitor/android": "^8.0.2",
     "@capacitor/cli": "^8.0.2",
-    "@capacitor/core": "^8.0.2"
+    "@capacitor/core": "^8.0.2",
+    "fast-xml-parser": "^5.9.0"
   },
   "devDependencies": {
     "eslint": "^8.57.0",

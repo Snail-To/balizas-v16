@@ -242,7 +242,6 @@ window.App = {
         }
 
         locateBtn.addEventListener('click', () => {
-            this.loadAndRenderBeacons();
             if (!navigator.geolocation) {
                 console.warn('Geolocalización no soportada');
                 return;
