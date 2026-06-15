@@ -23,8 +23,6 @@ window.App = {
         // Inicializar mapa
         MapManager.init();
 
-        this.initUserLocation();
-
         // Configurar panel de ajustes
         this.setupSettingsPanel();
 
@@ -201,22 +199,6 @@ window.App = {
         }
     },
 
-    initUserLocation() {
-        if (!navigator.geolocation) {
-            return;
-        }
-
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                const { latitude, longitude } = position.coords;
-                MapManager.setUserLocation(longitude, latitude);
-            },
-            (error) => {
-                console.warn('No se pudo obtener la ubicación del usuario:', error);
-            }
-        );
-    },
-
     /**
      * Actualiza textos dinámicos después de cambio de idioma
      */
@@ -244,6 +226,7 @@ window.App = {
         locateBtn.addEventListener('click', () => {
             if (!navigator.geolocation) {
                 console.warn('Geolocalización no soportada');
+                this.updateStatus('locationUnavailable', 'error');
                 return;
             }
 
@@ -265,17 +248,21 @@ window.App = {
                 },
                 (error) => {
                     console.warn('No se pudo obtener la ubicación del usuario:', error);
-                    // Si falla el GPS pero ya teníamos una posición previa, al menos enfocamos esa
-                    MapManager.focusUserLocation();
+                    const errorKey = error.code === 1
+                        ? 'locationPermissionDenied'
+                        : error.code === 3
+                            ? 'locationTimeout'
+                            : 'locationUnavailable';
+                    this.updateStatus(errorKey, 'error');
                     
                     // Restaurar botón
                     locateBtn.style.opacity = '1';
                     locateBtn.style.pointerEvents = 'auto';
                 },
                 {
-                    enableHighAccuracy: true,
-                    timeout: 10000,
-                    maximumAge: 0 // Forzar posición fresca
+                    enableHighAccuracy: false,
+                    timeout: 15000,
+                    maximumAge: 60000
                 }
             );
         });

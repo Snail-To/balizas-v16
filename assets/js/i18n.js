@@ -31,6 +31,9 @@ window.I18n = {
             dgtNotice: 'La DGT solo publica información sobre la activación de dispositivos V16 en carreteras y autopistas nacionales. No se publican las balizas activadas en zonas urbanas ni en áreas alejadas de la red viaria.',
 
             myLocation: 'Mi ubicación',
+            locationPermissionDenied: 'Permiso de ubicación denegado. Actívalo en los ajustes del navegador o de la aplicación.',
+            locationUnavailable: 'No se ha podido obtener tu ubicación.',
+            locationTimeout: 'La ubicación está tardando demasiado. Inténtalo de nuevo.',
 
             // Popup de baliza
             beacon: 'Baliza V16',
@@ -72,6 +75,9 @@ window.I18n = {
             dgtNotice: 'The DGT only publishes information on V16 device activation on national roads and highways. Beacons activated in urban areas or areas far from the road network are not published.',
 
             myLocation: 'My location',
+            locationPermissionDenied: 'Location permission was denied. Enable it in the browser or app settings.',
+            locationUnavailable: 'Your location could not be determined.',
+            locationTimeout: 'Location is taking too long. Please try again.',
 
             // Beacon popup
             beacon: 'V16 Beacon',
