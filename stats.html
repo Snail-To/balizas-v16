@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Activaciones observadas · Balizas V16</title>
+  <link rel="stylesheet" href="./assets/css/stats.css">
+</head>
+<body>
+  <main>
+    <a href="./index.html">← Volver al mapa</a>
+    <h1>Activaciones V16 observadas</h1>
+    <label for="stats-day">Fecha</label>
+    <input id="stats-day" type="date" required>
+    <p id="stats-date">Hora de Madrid</p>
+    <strong id="stats-total">—</strong>
+    <p class="notice">Registro parcial: solo incluye eventos V16 publicados por DGT y recogidos por este sistema. No equivale al total oficial del día. Los eventos ya finalizados antes de iniciar la recogida no se pueden recuperar aquí. Las muestras no garantizan cobertura completa.</p>
+    <div class="toolbar"><p id="stats-status" role="status" aria-live="polite">Cargando estadísticas…</p><button id="stats-refresh" type="button">Actualizar</button></div>
+    <div class="table-wrap">
+      <table>
+        <caption>Inicio de los eventos por hora · actualización automática cada minuto</caption>
+        <thead><tr><th scope="col">Horario</th><th scope="col">Activaciones observadas</th><th scope="col">Acumulado observado</th><th scope="col">Recogida</th></tr></thead>
+        <tbody id="stats-rows"></tbody>
+      </table>
+    </div>
+    <p class="footnote">“—” indica un horario futuro o sin muestras ni eventos observados. Un 0 solo indica que no se han observado eventos nuevos. Los horarios incluyen el desfase UTC para distinguir horas repetidas durante el cambio de hora.</p>
+  </main>
+  <script src="./assets/js/stats.js"></script>
+</body>
+</html>

@@ -22,6 +22,8 @@ window.I18n = {
 
             // Panel de información
             activeBeacons: 'Balizas V16 Activas',
+            dailyStats: 'Estadísticas del día →',
+            staleData: 'Datos antiguos: la recogida está retrasada',
             loading: 'Cargando datos...',
             dataLoaded: 'Datos cargados correctamente',
             error: 'Error',
@@ -66,6 +68,8 @@ window.I18n = {
 
             // Info panel
             activeBeacons: 'Active V16 Beacons',
+            dailyStats: 'Daily statistics →',
+            staleData: 'Stale data: collection is delayed',
             loading: 'Loading data...',
             dataLoaded: 'Data loaded successfully',
             error: 'Error',
