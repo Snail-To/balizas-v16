@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "node scripts/dev-server.js",
+    "dev": "npx http-server -c-1 -p 5173 .",
     "lint": "eslint .",
     "format": "prettier -w \"**/*.{js,css,html,json}\"",
     "test": "node --test"

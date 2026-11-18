@@ -69,7 +69,6 @@
         <h2 data-i18n="activeBeacons">Balizas V16 Activas</h2>
         <div id="status" class="loading" data-i18n="loading">Cargando datos...</div>
         <div id="beacon-count">0</div>
-        <a href="./stats.html" data-i18n="dailyStats">Estadísticas del día →</a>
         <div id="last-update"><span data-i18n="lastUpdate">Última actualización</span>: <span id="last-update-time">--</span></div>
         <div id="next-update">
             <span data-i18n="nextUpdate">Próxima actualización en</span>: <span id="next-update-time">--</span>
@@ -118,12 +117,8 @@
 
     <script>
         if ('serviceWorker' in navigator) {
-            const hadController = Boolean(navigator.serviceWorker.controller);
-            navigator.serviceWorker.addEventListener('controllerchange', () => {
-                if (hadController) window.location.reload();
-            });
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./service-worker.js').catch(console.warn);
+                navigator.serviceWorker.register('./service-worker.js');
             });
         }
     </script>

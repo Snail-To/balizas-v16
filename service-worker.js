@@ -1,10 +1,7 @@
-const CACHE_NAME = 'balizas-v16-v11';
+const CACHE_NAME = 'balizas-v16-v9';
 const ASSETS = [
   './',
   './index.html',
-  './stats.html',
-  './assets/css/stats.css',
-  './assets/js/stats.js',
   './manifest.json',
   './assets/css/styles.css',
   './assets/js/app.js',
@@ -26,7 +23,7 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => Promise.all(
-      keys.filter((key) => key.startsWith('balizas-v16-') && key !== CACHE_NAME).map((key) => caches.delete(key))
+      keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
     )).then(() => self.clients.claim())
   );
 });
@@ -37,7 +34,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   const requestUrl = new URL(event.request.url);
-  if (requestUrl.origin !== self.location.origin || requestUrl.pathname.includes('/api/')) {
+  if (requestUrl.origin !== self.location.origin) {
     return;
   }
 
@@ -50,7 +47,7 @@ self.addEventListener('fetch', (event) => {
           }
 
           const responseClone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone)).catch(() => {});
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
           return response;
         })
         .catch(() => cached);

@@ -7,8 +7,8 @@ window.App = {
     // Estado
     refreshTimer: null,
     countdownTimer: null,
-    refreshInterval: 60000,
-    remainingSeconds: 60,
+    refreshInterval: 180000, // 180 segundos = 3 minutos
+    remainingSeconds: 180,
     deferredInstallPrompt: null,
 
     /**
@@ -123,7 +123,7 @@ window.App = {
 
             // Actualizar UI
             this.updateBeaconCount(beacons.length);
-            this.updateStatus(DgtApi.stale ? 'staleData' : 'dataLoaded', DgtApi.stale ? 'error' : 'success');
+            this.updateStatus('dataLoaded', 'success');
             this.updateLastUpdateTime();
 
             // Reiniciar cuenta atrás
@@ -134,7 +134,6 @@ window.App = {
             const errorMsg = I18n.get('error') + ': ' + error.message;
             const statusElement = document.getElementById('status');
             if (statusElement) {
-                statusElement.removeAttribute('data-i18n');
                 statusElement.textContent = errorMsg;
                 statusElement.className = 'error';
             }
@@ -313,9 +312,9 @@ window.App = {
     updateLastUpdateTime() {
         const timeElement = document.getElementById('last-update-time');
         if (timeElement) {
-            const now = DgtApi.lastUpdatedAt ? new Date(DgtApi.lastUpdatedAt) : new Date();
+            const now = new Date();
             const locale = I18n.getCurrentLanguage() === 'es' ? 'es-ES' : 'en-US';
-            const timeString = now.toLocaleTimeString(locale, { timeZone: 'Europe/Madrid' });
+            const timeString = now.toLocaleTimeString(locale);
             timeElement.textContent = timeString;
         }
     },
@@ -331,11 +330,10 @@ window.App = {
 
         // Reiniciar contador
         this.remainingSeconds = this.refreshInterval / 1000;
-        this.nextRefreshAt = Date.now() + this.refreshInterval;
 
         // Iniciar nueva cuenta atrás
         this.countdownTimer = setInterval(() => {
-            this.remainingSeconds = Math.max(0, Math.ceil((this.nextRefreshAt - Date.now()) / 1000));
+            this.remainingSeconds--;
             this.updateCountdownDisplay();
 
             if (this.remainingSeconds <= 0) {
@@ -385,10 +383,7 @@ window.App = {
     startAutoRefresh() {
         console.log(`Auto-refresh configurado cada ${this.refreshInterval / 1000} segundos`);
 
-        this.resetCountdown();
         this.refreshTimer = setInterval(() => {
-            this.resetCountdown();
-            if (document.hidden) return;
             console.log('Actualizando datos...');
             this.loadAndRenderBeacons();
         }, this.refreshInterval);
@@ -408,10 +403,6 @@ window.App = {
             clearInterval(this.countdownTimer);
             this.countdownTimer = null;
         }
-        if (MapManager.beaconBlinkTimer) {
-            clearInterval(MapManager.beaconBlinkTimer);
-            MapManager.beaconBlinkTimer = null;
-        }
     }
 };
 
@@ -423,12 +414,4 @@ window.addEventListener('DOMContentLoaded', () => {
 // Limpiar al cerrar
 window.addEventListener('beforeunload', () => {
     App.stopAutoRefresh();
-});
-
-window.addEventListener('pageshow', (event) => {
-    if (event.persisted) {
-        MapManager.startBeaconBlinking();
-        App.loadAndRenderBeacons();
-        App.startAutoRefresh();
-    }
 });
