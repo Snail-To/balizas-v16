@@ -15,7 +15,7 @@ let renderedQuery = '';
 function syncToday() {
   const parts = Object.fromEntries(dateKey.formatToParts(new Date()).map(({ type, value }) => [type, value]));
   const today = [parts.year, parts.month, parts.day].join('-');
-  if (!date.value || date.value === date.max) date.value = today;
+  if (!date.max || date.value === date.max) date.value = today;
   date.max = today;
 }
 
@@ -90,17 +90,35 @@ function render(data) {
     ? rows[0].label + ' – ' + rows[rows.length - 1].label
     : data.day;
   renderTable();
-  const latest = data.latest;
-  const delayed = latest && (!latest.succeeded || Date.now() - Date.parse(latest.requested_at) > 180000);
-  status.classList.toggle('error', Boolean(delayed));
-  status.textContent = delayed ? 'La recogida de datos está retrasada.'
+  const latestAt = Date.parse(data.latest?.requested_at);
+  const known = Number.isFinite(latestAt);
+  const delayed = known && (!data.latest.succeeded || Date.now() - latestAt > 180000);
+  status.classList.toggle('error', !known || delayed);
+  status.textContent = !known ? 'No se pudo comprobar el estado de la recogida de datos.'
+    : delayed ? 'La recogida de datos está retrasada.'
     : observed.length ? '' : 'No hay datos observados en este periodo.';
+}
+
+function clearStats() {
+  renderedQuery = '';
+  rows = [];
+  renderTable();
+  el('stats-range').textContent = 'Hora de Madrid';
+  el('stats-total').textContent = '—';
 }
 
 async function loadStats() {
   if (document.hidden) return;
   syncToday();
-  if (mode === 'hourly' && !date.checkValidity()) return;
+  if (mode === 'hourly' && !date.checkValidity()) {
+    pending?.controller.abort();
+    pending = undefined;
+    refresh.disabled = false;
+    clearStats();
+    status.classList.add('error');
+    status.textContent = 'Selecciona una fecha válida que no sea posterior a hoy.';
+    return;
+  }
   const query = mode === 'daily' ? './api/dgt-peaks' : './api/dgt-stats?day=' + encodeURIComponent(date.value);
   if (pending?.query === query) return;
   pending?.controller.abort();
@@ -109,11 +127,7 @@ async function loadStats() {
   refresh.disabled = true;
   status.classList.remove('error');
   if (query !== renderedQuery) {
-    renderedQuery = '';
-    rows = [];
-    body.replaceChildren();
-    el('stats-range').textContent = 'Hora de Madrid';
-    el('stats-total').textContent = '—';
+    clearStats();
     status.textContent = 'Cargando estadísticas…';
   }
   try {

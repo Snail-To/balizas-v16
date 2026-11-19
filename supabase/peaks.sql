@@ -31,7 +31,9 @@ as $$
             from hours h where h.day = d.day and h.activations = d.peak), '[]'::jsonb),
         'activePeak', a.event_count,
         'activeAt', a.requested_at
-    ) order by d.day desc))
+    ) order by d.day desc),
+    'latest', (select jsonb_build_object('requested_at', requested_at, 'succeeded', succeeded)
+        from public.v16_collection_runs order by requested_at desc limit 1))
     from daily d left join active a using (day);
 $$;
 
