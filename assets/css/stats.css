@@ -1,21 +1,53 @@
 * { box-sizing: border-box; }
-body { margin: 0; background: #f4f6f8; color: #203246; font: 16px/1.6 system-ui, sans-serif; }
-main { max-width: 1000px; margin: 32px auto; padding: 28px; background: white; border-radius: 16px; }
-a { color: #125b91; }
-h1 { font-size: clamp(24px, 4vw, 34px); line-height: 1.25; margin-bottom: 8px; }
-#stats-date { color: #526276; }
-#stats-total { display: block; font-size: 64px; line-height: 1.3; }
-.notice { background: #fff6dc; padding: 16px; border-left: 4px solid #d39713; }
-.toolbar { display: flex; justify-content: space-between; gap: 16px; align-items: center; margin: 20px 0; }
-button { border: 0; border-radius: 8px; background: #203246; color: white; padding: 12px 18px; cursor: pointer; }
-.table-wrap { overflow-x: auto; }
-table { width: 100%; border-collapse: collapse; text-align: left; }
-caption { text-align: left; padding-bottom: 12px; color: #526276; }
-th { background: #eaf0f5; }
-th, td { padding: 12px; border-bottom: 1px solid #dce4ec; }
-td:first-child { white-space: nowrap; }
-.footnote { font-size: 13px; color: #526276; }
-.error { color: #a12626; }
-input { font: inherit; padding: 8px; border: 1px solid #aebdca; border-radius: 6px; margin-left: 8px; }
-button:disabled { opacity: .6; cursor: wait; }
-@media (max-width: 600px) { main { margin: 0; padding: 18px; border-radius: 0; } th, td { padding: 10px; font-size: 13px; } }
+[hidden] { display: none !important; }
+body {
+  margin: 0;
+  background: #f3f6fa;
+  color: #182b42;
+  font: 15px/1.5 system-ui, sans-serif;
+}
+main { max-width: 1140px; margin: 32px auto; padding: 0 24px 24px; }
+a { color: #175a9e; }
+.back-link { font-size: .9rem; }
+h1 { margin: 10px 0 20px; font-size: clamp(26px, 4vw, 38px); line-height: 1.16; }
+h2 { margin: 0; font-size: 1.25rem; }
+button, input { font: inherit; }
+button { cursor: pointer; }
+button:focus-visible, input:focus-visible { outline: 3px solid #1864ba; outline-offset: 2px; }
+.controls { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+.view-options { display: flex; padding: 4px; border: 1px solid #d7e1ec; border-radius: 10px; background: #eaf0f8; }
+.view-options button, .refresh { border: 0; padding: 8px 13px; border-radius: 7px; font-weight: 600; }
+.view-options button { color: #365270; background: transparent; }
+.view-options button[aria-pressed="true"] { background: #1d5492; color: white; }
+.refresh { margin-left: auto; background: white; color: #164879; border: 1px solid #d7e1ec; }
+.refresh:disabled { opacity: .6; cursor: wait; }
+input { margin-left: 4px; padding: 7px; border: 1px solid #d7e1ec; border-radius: 7px; color: inherit; background: white; }
+.panel { margin: 0 0 16px; padding: 18px 20px; border: 1px solid #dce5ef; border-radius: 12px; background: white; }
+.panel-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+#stats-range, #stats-status, .footnote { color: #526477; font-size: .875rem; }
+#stats-range { margin: 4px 0 0; }
+#stats-status:empty { display: none; }
+#stats-status.error { color: #a12626; }
+.total { text-align: right; flex-shrink: 0; color: #526477; font-size: .8rem; }
+.total strong { display: block; color: #163a65; font-size: clamp(26px, 4vw, 38px); line-height: 1.2; font-variant-numeric: tabular-nums; }
+.chart { position: relative; height: clamp(200px, 25vw, 266px); margin-top: 12px; }
+.chart canvas, #trend-points { position: absolute; inset: 0; width: 100%; height: 100%; }
+.point { position: absolute; width: 24px; height: 24px; transform: translate(-50%, -50%); padding: 0; border: 0; border-radius: 50%; background: transparent; }
+.point[aria-pressed="true"], .point:hover { background: #1d62b32b; }
+.chart-selection { min-height: 1.5em; margin: 5px 0 0; color: #164879; font-weight: 600; }
+.table-wrap { overflow-x: auto; margin-top: 12px; }
+table { width: 100%; border-collapse: collapse; text-align: left; font-variant-numeric: tabular-nums; }
+th { background: #eef3f9; color: #324b64; }
+th, td { padding: 9px 12px; border-bottom: 1px solid #e1e8f1; }
+th:first-child, td:first-child { white-space: nowrap; }
+.numeric { text-align: right; }
+tbody tr.selected { background: #dcecff; }
+.period-button { border: 0; padding: 2px 0; color: #175a9e; text-align: left; text-decoration: underline; background: transparent; }
+.footnote { margin: 12px 0 0; }
+@media (max-width: 600px) {
+  main { margin: 18px auto; padding: 0 12px 18px; }
+  .panel { padding: 14px 10px; }
+  .controls { gap: 8px; }
+  .refresh { margin-left: 0; }
+  th, td { padding: 8px; font-size: .875rem; }
+}

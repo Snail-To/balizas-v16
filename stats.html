@@ -8,31 +8,44 @@
 </head>
 <body>
   <main>
-    <a href="./">← Volver al mapa</a>
+    <a class="back-link" href="./">← Volver al mapa</a>
     <h1>Activaciones V16 observadas</h1>
-    <label for="stats-day">Fecha</label>
-    <input id="stats-day" type="date" required>
-    <p id="stats-date">Hora de Madrid</p>
-    <strong id="stats-total">—</strong>
-    <p class="notice">Registro parcial: solo incluye eventos V16 publicados por DGT y recogidos por este sistema. No equivale al total oficial del día. Los eventos ya finalizados antes de iniciar la recogida no se pueden recuperar aquí. Las muestras no garantizan cobertura completa.</p>
-    <div class="toolbar"><p id="stats-status" role="status" aria-live="polite">Cargando estadísticas…</p><button id="stats-refresh" type="button">Actualizar</button></div>
-    <div class="table-wrap">
-      <table>
-        <caption>Inicio de los eventos por hora · actualización automática cada minuto</caption>
-        <thead><tr><th scope="col">Horario</th><th scope="col">Activaciones observadas</th><th scope="col">Acumulado observado</th><th scope="col">Recogida</th></tr></thead>
-        <tbody id="stats-rows"></tbody>
-      </table>
+    <div class="controls">
+      <div class="view-options" role="group" aria-label="Vista de estadísticas">
+        <button type="button" id="view-daily" aria-pressed="true">30 días / día</button>
+        <button type="button" id="view-hourly" aria-pressed="false">24 horas / hora</button>
+      </div>
+      <label id="date-control" hidden>Fecha <input id="stats-day" type="date" required></label>
+      <button id="stats-refresh" type="button" class="refresh">Actualizar</button>
     </div>
-    <p class="footnote">“—” indica un horario futuro o sin muestras ni eventos observados. Un 0 solo indica que no se han observado eventos nuevos. Los horarios incluyen el desfase UTC para distinguir horas repetidas durante el cambio de hora.</p>
-    <h2>Picos diarios · últimos 30 días</h2>
-    <p>El pico horario cuenta los eventos que comenzaron en la misma hora. El pico simultáneo usa las muestras de los últimos 14 días. «—» indica que no hay datos para ese valor.</p>
-    <p id="peaks-status" role="status">Cargando picos diarios…</p>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th scope="col">Fecha</th><th scope="col">Total observado</th><th scope="col">Pico horario</th><th scope="col">Horarios del pico</th><th scope="col">Pico simultáneo</th><th scope="col">Hora de la muestra</th></tr></thead>
-        <tbody id="peaks-rows"></tbody>
-      </table>
-    </div>
+
+    <section class="panel" aria-labelledby="trend-title">
+      <header class="panel-header">
+        <div>
+          <h2 id="trend-title">Tendencia diaria</h2>
+          <p id="stats-range">Hora de Madrid</p>
+        </div>
+        <div class="total"><span>Total observado</span><strong id="stats-total">—</strong></div>
+      </header>
+      <p id="stats-status" role="status">Cargando estadísticas…</p>
+      <div class="chart" id="stats-chart" hidden>
+        <canvas id="trend-canvas" aria-hidden="true"></canvas>
+        <div id="trend-points" role="group" aria-label="Seleccionar un periodo del gráfico"></div>
+      </div>
+      <p id="chart-selection" class="chart-selection" role="status" hidden></p>
+    </section>
+
+    <section class="panel" aria-labelledby="detail-title">
+      <header class="panel-header"><h2 id="detail-title">Detalle diario</h2></header>
+      <div class="table-wrap">
+        <table aria-labelledby="detail-title">
+          <thead id="stats-head"></thead>
+          <tbody id="stats-rows"></tbody>
+        </table>
+      </div>
+      <p id="stats-note" class="footnote"></p>
+    </section>
+    <p class="footnote">Hora de Madrid. El recuento incluye los eventos publicados por la DGT que ha recogido este sitio. «—» indica que no hay datos para ese valor.</p>
   </main>
   <script src="./assets/js/stats.js"></script>
 </body>

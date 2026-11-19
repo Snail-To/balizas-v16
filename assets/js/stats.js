@@ -1,104 +1,303 @@
-const STATS_URL = './api/dgt-stats';
-let loading = false;
-let peaksLoading = false;
-const dayInput = document.getElementById('stats-day');
-const dayFormat = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Madrid' });
-const time = new Intl.DateTimeFormat('es-ES', { timeZone: 'Europe/Madrid', hour: '2-digit', minute: '2-digit', timeZoneName: 'shortOffset' });
-dayInput.value = dayInput.max = dayFormat.format(new Date());
+const madrid = 'Europe/Madrid';
+const number = new Intl.NumberFormat('es-ES');
+const dateKey = new Intl.DateTimeFormat('en-CA', { timeZone: madrid, year: 'numeric', month: '2-digit', day: '2-digit' });
+const dayLabel = new Intl.DateTimeFormat('es-ES', { timeZone: 'UTC', day: 'numeric', month: 'short' });
+const clock = new Intl.DateTimeFormat('es-ES', { timeZone: madrid, hour: '2-digit', minute: '2-digit' });
+const clockWithOffset = new Intl.DateTimeFormat('es-ES', { timeZone: madrid, hour: '2-digit', minute: '2-digit', timeZoneName: 'shortOffset' });
+const el = id => document.getElementById(id);
+const date = el('stats-day');
+const refresh = el('stats-refresh');
+const status = el('stats-status');
+const chart = el('stats-chart');
+const canvas = el('trend-canvas');
+const points = el('trend-points');
+const selection = el('chart-selection');
+const body = el('stats-rows');
+let mode = 'daily';
+let rows = [];
+let selectedKey = null;
+let pending;
+let renderedQuery = '';
+
 function syncToday() {
-  const today = dayFormat.format(new Date());
-  if (!dayInput.value || dayInput.value === dayInput.max) dayInput.value = today;
-  dayInput.max = today;
+  const parts = Object.fromEntries(dateKey.formatToParts(new Date()).map(({ type, value }) => [type, value]));
+  const today = [parts.year, parts.month, parts.day].join('-');
+  if (!date.value || date.value === date.max) date.value = today;
+  date.max = today;
 }
+
 function period(start, end) {
-  return time.format(new Date(start)) + ' – ' + time.format(new Date(end));
+  return clockWithOffset.format(new Date(start)) + ' – ' + clockWithOffset.format(new Date(end));
 }
-function cell(row, text) {
-  const td = document.createElement('td');
-  td.textContent = text;
-  row.appendChild(td);
+
+function formatValue(value) {
+  return value == null ? '—' : number.format(value);
 }
-async function refreshPeaks() {
-  if (peaksLoading || document.hidden) return;
-  peaksLoading = true;
-  const status = document.getElementById('peaks-status');
-  try {
-    const response = await fetch('./api/dgt-peaks', { signal: AbortSignal.timeout(15000) });
-    if (!response.ok) throw new Error('HTTP ' + response.status);
-    const { days } = await response.json();
-    const rows = days.map(day => {
-      const row = document.createElement('tr');
-      cell(row, day.day);
-      cell(row, day.total ?? '—');
-      cell(row, day.peak ?? '—');
-      cell(row, day.hours.map(([start, end]) => period(start, end)).join(', ') || '—');
-      cell(row, day.activePeak ?? '—');
-      cell(row, day.activeAt ? time.format(new Date(day.activeAt)) : '—');
-      return row;
-    });
-    document.getElementById('peaks-rows').replaceChildren(...rows);
-    status.textContent = '';
-  } catch {
-    status.textContent = 'No se pudieron actualizar los picos diarios.';
-    status.className = 'error';
-  } finally {
-    peaksLoading = false;
+
+function dailyRows(days) {
+  return [...days].reverse().map(day => ({
+    key: day.day,
+    tick: dayLabel.format(new Date(day.day + 'T00:00:00Z')),
+    label: day.day,
+    value: day.total,
+    details: [
+      formatValue(day.peak),
+      day.hours.map(([start, end]) => period(start, end)).join(', ') || '—',
+      formatValue(day.activePeak),
+      day.activeAt ? clockWithOffset.format(new Date(day.activeAt)) : '—'
+    ]
+  }));
+}
+
+function hourlyRows(hours) {
+  let cumulative = 0;
+  return hours.map(hour => {
+    const future = Date.parse(hour.hour_start) > Date.now();
+    const hasData = !future && (hour.samples > 0 || hour.activations > 0);
+    if (hasData) cumulative += Number(hour.activations);
+    return {
+      key: hour.hour_start,
+      tick: clock.format(new Date(hour.hour_start)),
+      label: period(hour.hour_start, hour.hour_end),
+      value: hasData ? Number(hour.activations) : null,
+      details: [hasData ? formatValue(cumulative) : '—', future ? 'Pendiente' : hour.samples ? number.format(hour.samples) : '—']
+    };
+  });
+}
+
+function select(key, scroll = false) {
+  selectedKey = key;
+  for (const item of rows) {
+    const active = item.key === selectedKey;
+    item.row.classList.toggle('selected', active);
+    item.point?.setAttribute('aria-pressed', String(active));
+    item.button?.setAttribute('aria-pressed', String(active));
   }
+  const item = rows.find(row => row.key === selectedKey);
+  selection.hidden = !item;
+  selection.textContent = item ? item.label + ' · ' + formatValue(item.value) + ' activaciones' : '';
+  if (scroll && item) item.row.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 }
-async function refreshStats() {
-  if (loading || document.hidden) return;
-  syncToday();
-  if (!dayInput.checkValidity()) return;
-  loading = true;
-  const button = document.getElementById('stats-refresh');
-  button.disabled = true;
-  dayInput.disabled = true;
-  const status = document.getElementById('stats-status');
-  try {
-    const response = await fetch(STATS_URL + '?day=' + encodeURIComponent(dayInput.value), {
-      signal: AbortSignal.timeout(15000)
+
+function renderTable() {
+  const labels = mode === 'daily'
+    ? ['Fecha', 'Activaciones', 'Pico horario', 'Horarios del pico', 'Pico simultáneo', 'Hora de la muestra']
+    : ['Horario', 'Activaciones', 'Acumulado observado', 'Muestras'];
+  const heading = document.createElement('tr');
+  for (const [index, label] of labels.entries()) {
+    const th = document.createElement('th');
+    th.scope = 'col';
+    th.textContent = label;
+    th.classList.toggle('numeric', mode === 'hourly' ? index > 0 : [1, 2, 4].includes(index));
+    heading.append(th);
+  }
+  el('stats-head').replaceChildren(heading);
+  for (const item of rows) {
+    const row = document.createElement('tr');
+    const label = row.insertCell();
+    if (item.value == null) {
+      label.textContent = item.label;
+    } else {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'period-button';
+      button.textContent = item.label;
+      button.addEventListener('click', () => select(item.key));
+      label.append(button);
+      item.button = button;
+    }
+    [formatValue(item.value), ...item.details].forEach((value, index) => {
+      const cell = row.insertCell();
+      cell.textContent = value;
+      cell.classList.toggle('numeric', mode === 'hourly' || [0, 1, 3].includes(index));
     });
+    item.row = row;
+  }
+  body.replaceChildren(...rows.map(item => item.row));
+}
+
+function drawTrend() {
+  const width = chart.clientWidth;
+  const height = chart.clientHeight;
+  if (!width || !height || chart.hidden) return;
+  const ratio = window.devicePixelRatio || 1;
+  canvas.width = Math.round(width * ratio);
+  canvas.height = Math.round(height * ratio);
+  const ctx = canvas.getContext('2d');
+  ctx.scale(ratio, ratio);
+
+  const left = 48;
+  const right = width - 14;
+  const top = 15;
+  const bottom = height - 32;
+  const values = rows.map(row => row.value).filter(value => value != null);
+  const max = Math.max(1, ...values);
+  const step = Math.max(1, Math.ceil(max / 4));
+  const x = index => left + index * (right - left) / Math.max(rows.length - 1, 1);
+  const y = value => bottom - value * (bottom - top) / (step * 4);
+  ctx.font = '12px system-ui, sans-serif';
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#526477';
+  ctx.strokeStyle = '#dfe8f1';
+  for (let tick = 0; tick <= 4; tick++) {
+    const line = y(tick * step);
+    ctx.beginPath();
+    ctx.moveTo(left, line);
+    ctx.lineTo(right, line);
+    ctx.stroke();
+    ctx.fillText(formatValue(tick * step), left - 8, line);
+  }
+
+  const spacing = Math.ceil(rows.length / Math.max(1, Math.floor((right - left) / 58)));
+  ctx.textAlign = 'center';
+  rows.forEach((item, index) => {
+    const last = rows.length - 1;
+    if (index === last || (index % spacing === 0 && last - index >= spacing)) {
+      ctx.fillText(item.tick, x(index), bottom + 17);
+    }
+  });
+
+  const gradient = ctx.createLinearGradient(0, top, 0, bottom);
+  gradient.addColorStop(0, '#76a7e3');
+  gradient.addColorStop(1, '#eff6ff');
+  const segments = [];
+  let segment = [];
+  rows.forEach((item, index) => {
+    if (item.value == null) {
+      if (segment.length) segments.push(segment);
+      segment = [];
+      return;
+    }
+    segment.push({ item, x: x(index), y: y(item.value) });
+  });
+  if (segment.length) segments.push(segment);
+
+  const focusKey = document.activeElement?.dataset.pointKey;
+  points.replaceChildren();
+  for (const run of segments) {
+    const first = run[0];
+    const last = run[run.length - 1];
+    ctx.beginPath();
+    ctx.moveTo(first.x, bottom);
+    run.forEach(point => ctx.lineTo(point.x, point.y));
+    ctx.lineTo(last.x, bottom);
+    ctx.closePath();
+    ctx.fillStyle = gradient;
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(first.x, first.y);
+    run.slice(1).forEach(point => ctx.lineTo(point.x, point.y));
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = '#2468b4';
+    ctx.stroke();
+    for (const point of run) {
+      ctx.beginPath();
+      ctx.arc(point.x, point.y, 3.5, 0, 2 * Math.PI);
+      ctx.fillStyle = '#2468b4';
+      ctx.fill();
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'point';
+      button.dataset.pointKey = point.item.key;
+      button.style.left = point.x + 'px';
+      button.style.top = point.y + 'px';
+      button.style.width = Math.min(24, (right - left) / Math.max(rows.length - 1, 1)) + 'px';
+      button.title = point.item.label + ' · ' + formatValue(point.item.value) + ' activaciones';
+      button.setAttribute('aria-label', button.title);
+      button.addEventListener('click', () => select(point.item.key, true));
+      points.append(button);
+      point.item.point = button;
+      if (focusKey === point.item.key) button.focus({ preventScroll: true });
+    }
+  }
+  select(selectedKey);
+}
+
+function render(data) {
+  rows = mode === 'daily' ? dailyRows(data.days) : hourlyRows(data.hours);
+  const observed = rows.filter(item => item.value != null);
+  const total = observed.length ? observed.reduce((sum, item) => sum + item.value, 0) : null;
+  el('stats-total').textContent = formatValue(total);
+  el('stats-range').textContent = mode === 'daily'
+    ? rows[0].label + ' – ' + rows[rows.length - 1].label
+    : data.day;
+  renderTable();
+  if (!observed.some(item => item.key === selectedKey)) {
+    selectedKey = observed.reduce((peak, item) => !peak || item.value >= peak.value ? item : peak, null)?.key;
+  }
+  chart.hidden = observed.length === 0;
+  select(selectedKey);
+  drawTrend();
+  const latest = data.latest;
+  const delayed = latest && (!latest.succeeded || Date.now() - Date.parse(latest.requested_at) > 180000);
+  status.classList.toggle('error', Boolean(delayed));
+  status.textContent = delayed ? 'La recogida de datos está retrasada.'
+    : observed.length ? '' : 'No hay datos observados en este periodo.';
+}
+
+async function loadStats() {
+  if (document.hidden) return;
+  syncToday();
+  if (mode === 'hourly' && !date.checkValidity()) return;
+  const query = mode === 'daily' ? './api/dgt-peaks' : './api/dgt-stats?day=' + encodeURIComponent(date.value);
+  if (pending?.query === query) return;
+  pending?.controller.abort();
+  const controller = new AbortController();
+  pending = { query, controller };
+  refresh.disabled = true;
+  status.classList.remove('error');
+  if (query !== renderedQuery) {
+    renderedQuery = '';
+    selectedKey = null;
+    rows = [];
+    body.replaceChildren();
+    chart.hidden = true;
+    selection.hidden = true;
+    el('stats-range').textContent = 'Hora de Madrid';
+    el('stats-total').textContent = '—';
+    status.textContent = 'Cargando estadísticas…';
+  }
+  try {
+    const response = await fetch(query, { signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]) });
     if (!response.ok) throw new Error('HTTP ' + response.status);
     const data = await response.json();
-    document.getElementById('stats-total').textContent = data.total > 0 || data.hours.some(hour => hour.samples > 0) ? data.total : '—';
-    document.getElementById('stats-date').textContent = data.day + ' · Europe/Madrid';
-    const body = document.getElementById('stats-rows');
-    body.replaceChildren();
-    let cumulative = 0;
-    data.hours.forEach(hour => {
-      const row = document.createElement('tr');
-      cumulative += Number(hour.activations);
-      const future = Date.parse(hour.hour_start) > Date.now();
-      cell(row, period(hour.hour_start, hour.hour_end));
-      cell(row, future ? '—' : (hour.samples > 0 || Number(hour.activations) > 0 ? hour.activations : '—'));
-      cell(row, future || (hour.samples === 0 && cumulative === 0) ? '—' : cumulative);
-      cell(row, future ? 'Pendiente' : (hour.samples > 0 ? hour.samples + ' muestras' : 'Sin muestreo en este horario'));
-      body.appendChild(row);
-    });
-    const latest = data.latest;
-    status.textContent = latest
-      ? 'Último intento: ' + time.format(new Date(latest.requested_at)) + (latest.succeeded ? ' · correcto' : ' · falló')
-      : 'Todavía no hay registros de recogida.';
-    status.className = latest && latest.succeeded && Date.now() - Date.parse(latest.requested_at) < 180000 ? '' : 'error';
+    if (controller.signal.aborted) return;
+    render(data);
+    renderedQuery = query;
   } catch {
-    status.textContent = 'No se pudieron actualizar las estadísticas. Los valores anteriores pueden estar desactualizados.';
-    status.className = 'error';
+    if (controller.signal.aborted) return;
+    status.textContent = 'No se pudieron actualizar las estadísticas.';
+    status.classList.add('error');
   } finally {
-    loading = false;
-    button.disabled = false;
-    dayInput.disabled = false;
+    if (pending?.controller === controller) {
+      pending = undefined;
+      refresh.disabled = false;
+    }
   }
 }
-function refreshVisible() {
-  refreshStats();
-  refreshPeaks();
+
+function showMode(next) {
+  mode = next;
+  const daily = mode === 'daily';
+  el('view-daily').setAttribute('aria-pressed', String(daily));
+  el('view-hourly').setAttribute('aria-pressed', String(!daily));
+  el('date-control').hidden = daily;
+  el('trend-title').textContent = daily ? 'Tendencia diaria' : 'Tendencia por hora';
+  el('detail-title').textContent = daily ? 'Detalle diario' : 'Detalle por hora';
+  el('stats-note').textContent = daily
+    ? 'El día en curso se actualiza con nuevas observaciones. El pico horario muestra la hora con más activaciones y el pico simultáneo usa las muestras de los últimos 14 días.'
+    : 'La hora en curso aún puede sumar activaciones. Los días con cambio de horario tienen 23 o 25 horas y el desfase UTC distingue las horas repetidas.';
+  loadStats();
 }
-document.getElementById('stats-refresh').addEventListener('click', refreshVisible);
-dayInput.addEventListener('change', refreshStats);
-refreshVisible();
+
+el('view-daily').addEventListener('click', () => showMode('daily'));
+el('view-hourly').addEventListener('click', () => showMode('hourly'));
+refresh.addEventListener('click', loadStats);
+date.addEventListener('change', loadStats);
+document.addEventListener('visibilitychange', loadStats);
+new ResizeObserver(drawTrend).observe(chart);
 setInterval(() => {
-  if (document.hidden) return;
-  if (dayInput.value === dayInput.max) refreshStats();
-  refreshPeaks();
+  if (mode === 'daily' || date.value === date.max) loadStats();
 }, 60000);
-document.addEventListener('visibilitychange', refreshVisible);
+showMode('daily');
