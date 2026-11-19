@@ -1,7 +1,6 @@
-const CACHE_NAME = 'balizas-v16-v12';
+const CACHE_NAME = 'balizas-v16-v13';
 const ASSETS = [
   './',
-  './index.html',
   './stats.html',
   './assets/css/stats.css',
   './assets/js/stats.js',
@@ -15,12 +14,14 @@ const ASSETS = [
   './assets/images/baliza_v16_simple_icon.png',
   './assets/images/person.png'
 ];
+const appUrl = (path) => new URL(path, self.registration.scope).href;
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
+    caches.open(CACHE_NAME)
+      .then((cache) => cache.addAll(ASSETS.map((asset) => new Request(appUrl(asset), { cache: 'reload' }))))
+      .then(() => self.skipWaiting())
   );
-  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
@@ -37,21 +38,24 @@ self.addEventListener('fetch', (event) => {
   }
 
   const requestUrl = new URL(event.request.url);
-  if (requestUrl.origin !== self.location.origin) {
+  if (requestUrl.origin !== self.location.origin || requestUrl.pathname.includes('/api/')) {
     return;
   }
 
   if (event.request.mode === 'navigate') {
-    event.respondWith(fetch(event.request).catch(async () => {
+    requestUrl.search = '';
+    const offlineUrl = requestUrl.href === appUrl('./index.html') ? appUrl('./') : requestUrl.href;
+    event.respondWith(fetch(event.request, { cache: 'no-cache' }).catch(async () => {
       const cache = await caches.open(CACHE_NAME);
-      return (await cache.match(event.request, { ignoreSearch: true })) || Response.error();
+      return (await cache.match(offlineUrl)) || Response.error();
     }));
     return;
   }
 
-  if (ASSETS.some(asset => new URL(asset, self.registration.scope).href === event.request.url)) {
-    event.respondWith(caches.open(CACHE_NAME).then(async (cache) =>
-      (await cache.match(event.request)) || fetch(event.request)
-    ));
+  if (ASSETS.some((asset) => appUrl(asset) === event.request.url)) {
+    event.respondWith(fetch(event.request).catch(async () => {
+      const cache = await caches.open(CACHE_NAME);
+      return (await cache.match(event.request)) || Response.error();
+    }));
   }
 });
