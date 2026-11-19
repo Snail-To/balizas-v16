@@ -1,4 +1,4 @@
-const CACHE_NAME = 'balizas-v16-v14';
+const CACHE_NAME = 'balizas-v16-v15';
 const ASSETS = [
   './',
   './stats.html',
