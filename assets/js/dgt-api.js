@@ -5,6 +5,8 @@
 
 window.DgtApi = {
     inFlightRequest: null,
+    lastUpdatedAt: null,
+    stale: false,
 
     // Configuración
     config: {
@@ -22,35 +24,24 @@ window.DgtApi = {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), this.config.REQUEST_TIMEOUT);
 
-        let response;
         try {
-            response = await fetch(this.config.FEED_URL, {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json'
-                },
-                signal: controller.signal
+            const response = await fetch(this.config.FEED_URL, {
+                method: 'GET', headers: { Accept: 'application/json' }, signal: controller.signal
             });
+            if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
+            const beacons = await response.json();
+            if (!Array.isArray(beacons)) throw new Error('Respuesta de datos no válida');
+            this.lastUpdatedAt = response.headers.get('X-Beacons-Updated-At');
+            const publishedAt = response.headers.get('X-Beacons-Published-At') || this.lastUpdatedAt;
+            this.stale = response.headers.get('X-Beacons-Stale') === 'true'
+                || Boolean(publishedAt && Date.now() - Date.parse(publishedAt) > 180000);
+            return beacons;
         } catch (error) {
-            if (error && error.name === 'AbortError') {
-                throw new Error('Tiempo de espera agotado');
-            }
+            if (error && error.name === 'AbortError') throw new Error('Tiempo de espera agotado');
             throw error;
         } finally {
             clearTimeout(timeoutId);
         }
-
-        if (!response.ok) {
-            throw new Error(`Error HTTP: ${response.status}`);
-        }
-
-        const beacons = await response.json();
-        if (!Array.isArray(beacons)) {
-            throw new Error('Respuesta de datos no válida');
-        }
-
-        console.log(`Balizas recibidas: ${beacons.length}`);
-        return beacons;
     },
 
     /**

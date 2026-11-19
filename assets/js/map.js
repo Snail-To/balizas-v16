@@ -18,6 +18,7 @@ window.MapManager = {
     beaconIcon: null,
     beaconBlinkTimer: null,
     beaconBlinkOn: true,
+    hasFittedBeacons: false,
 
     // Configuración
     config: {
@@ -124,7 +125,8 @@ window.MapManager = {
      * @param {object} evt - Evento de clic
      */
     handleMapClick(evt) {
-        const feature = this.map.forEachFeatureAtPixel(evt.pixel, (feature) => feature);
+        const feature = this.map.forEachFeatureAtPixel(evt.pixel, (feature) => feature,
+            { layerFilter: (layer) => layer === this.vectorLayer });
 
         if (feature) {
             const props = feature.getProperties();
@@ -138,7 +140,7 @@ window.MapManager = {
      */
     handlePointerMove(e) {
         const pixel = this.map.getEventPixel(e.originalEvent);
-        const hit = this.map.hasFeatureAtPixel(pixel);
+        const hit = this.map.hasFeatureAtPixel(pixel, { layerFilter: (layer) => layer === this.vectorLayer });
         const target = this.map.getTargetElement();
 
         if (target) {
@@ -162,6 +164,9 @@ window.MapManager = {
             if (event.target === popup) {
                 popup.classList.add('hidden');
             }
+        });
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') popup.classList.add('hidden');
         });
     },
 
@@ -245,13 +250,14 @@ window.MapManager = {
         console.log(`${beacons.length} balizas renderizadas en el mapa`);
 
         // Si hay balizas, ajustar vista para mostrarlas todas
-        if (beacons.length > 0) {
+        if (beacons.length > 0 && !this.hasFittedBeacons && !this.userFeature) {
             const extent = this.vectorSource.getExtent();
             this.map.getView().fit(extent, {
                 padding: [50, 50, 50, 50],
                 maxZoom: 16,
                 duration: 1000
             });
+            this.hasFittedBeacons = true;
         }
     },
 
@@ -307,7 +313,9 @@ window.MapManager = {
 
         try {
             const date = new Date(timeStr);
-            return date.toLocaleString('es-ES', {
+            if (!Number.isFinite(date.getTime())) return I18n.get('unknown');
+            return date.toLocaleString(I18n.getCurrentLanguage() === 'en' ? 'en-GB' : 'es-ES', {
+                timeZone: 'Europe/Madrid',
                 year: 'numeric',
                 month: '2-digit',
                 day: '2-digit',
