@@ -19,12 +19,21 @@
       <button id="stats-refresh" type="button" class="refresh">Actualizar</button>
     </div>
 
-    <section class="panel" aria-labelledby="detail-title">
+    <section class="panel" aria-label="Gráfico de activaciones">
       <header class="panel-header">
-        <div><h2 id="detail-title">Detalle diario</h2><p id="stats-range">Hora de Madrid</p></div>
+        <p id="stats-range">Hora de Madrid</p>
         <div class="total"><span>Total observado</span><strong id="stats-total">—</strong></div>
       </header>
       <p id="stats-status" role="status">Cargando estadísticas…</p>
+      <div class="chart" id="stats-chart" hidden>
+        <canvas id="trend-canvas" aria-hidden="true"></canvas>
+        <div id="trend-points" role="group" aria-label="Seleccionar un periodo del gráfico"></div>
+      </div>
+      <p id="chart-selection" class="chart-selection" role="status" hidden></p>
+    </section>
+
+    <section class="panel" aria-labelledby="detail-title">
+      <header class="panel-header"><h2 id="detail-title">Detalle diario</h2></header>
       <div class="table-wrap">
         <table aria-labelledby="detail-title">
           <thead id="stats-head"></thead>
