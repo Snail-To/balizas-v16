@@ -60,7 +60,7 @@ function hourlyRows(hours) {
       tick: clock.format(new Date(hour.hour_start)),
       label: period(hour.hour_start, hour.hour_end),
       value: hasData ? Number(hour.activations) : null,
-      details: [hasData ? formatValue(cumulative) : '—', future ? 'Pendiente' : hour.samples ? number.format(hour.samples) : '—']
+      details: [hasData ? formatValue(cumulative) : '—']
     };
   });
 }
@@ -82,7 +82,7 @@ function select(key, scroll = false) {
 function renderTable() {
   const labels = mode === 'daily'
     ? ['Fecha', 'Activaciones', 'Pico horario', 'Horarios del pico', 'Pico simultáneo', 'Hora de la muestra']
-    : ['Horario', 'Activaciones', 'Acumulado observado', 'Muestras'];
+    : ['Horario', 'Activaciones', 'Acumulado observado'];
   const heading = document.createElement('tr');
   for (const [index, label] of labels.entries()) {
     const th = document.createElement('th');
